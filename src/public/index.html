@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- <link rel="stylesheet" href="css/index.css"> -->
+    <title>Distance</title>
+    <style>
+        body{
+            margin: 0;
+            padding: 0;
+        }
+
+        main{
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            flex-wrap: wrap;
+            text-align: center;
+        }
+
+        header, footer{
+            width: 100vw;
+            height: 15vh;
+            background-color: #222;
+            color: yellow;
+        }
+
+        section{
+            width: 100vw;
+            height: 70vh;
+            background-color: rgb(161, 161, 161);
+            color: #122;
+        }
+
+        ul{
+            list-style: none;
+        }
+
+    </style>
+</head>
+<body>
+    <main>
+        <header>
+            <h1>Distance Between</h1>
+        </header>
+        <section>
+            <h2>All Users</h2>
+            <ul>
+                <li>Lista de usuarios</li>
+            </ul>
+        </section>
+        <footer>
+            info of the user selected
+        </footer>
+    </main>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/index.js"></script>
+</body>
+</html>
