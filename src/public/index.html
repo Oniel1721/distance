@@ -34,8 +34,77 @@
             color: #122;
         }
 
-        ul{
+        
+        
+        /* Registro */
+
+        section div{
+            margin: auto;
+        }
+
+        form{
+            display: flex;
+            width: 250px;
+            flex-direction: column;
+            font-size: 2rem;
+            font-weight: bold;
+            margin: auto;
+        }
+
+        /* Users */
+        .users{
+            margin: 16px auto;
+            display: flex;
+            flex-direction: column;
             list-style: none;
+            justify-content: center;
+            align-items: center;
+            overflow-y: scroll;
+            overflow-x: hidden;
+            max-height: 60vh;
+        }
+
+        .user{
+            padding: 1rem;
+            margin: 0.5rem 0;
+            background-color: aliceblue;
+            color: #222;
+            font-weight: bold;
+            font-size: 1.5rem;
+            transition: all 0.3 ease;
+            width: 100vw;
+            cursor: pointer;
+        }
+
+        .user:hover{
+            background-color: #222;
+            color: aqua;
+        }
+
+        /* footer info */
+
+        footer p{
+            margin: 10px;
+            padding: 0;
+        }
+        .error-msg{
+            background-color: #222;
+            color: red;
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-top: 1rem;
+        }
+
+        .good-msg{
+            background-color: #222;
+            color: rgb(0, 182, 97);
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-top: 1rem;
+        }
+
+        .hidden{
+            display: none;
         }
 
     </style>
@@ -46,16 +115,140 @@
             <h1>Distance Between</h1>
         </header>
         <section>
-            <h2>All Users</h2>
-            <ul>
-                <li>Lista de usuarios</li>
-            </ul>
+            <div class="registred hidden">
+                <ul class="users">
+                </ul>
+            </div>
+            <div class="not-registred">
+                <form id="form">
+                    <label>Input a username</label>
+                    <input type="text" name="username" required>
+                    <button type="submit">Send</button>
+                </form>
+            </div>
+            <div class="error-msg"></div>
+            <div class="good-msg"></div>
         </section>
         <footer>
             info of the user selected
         </footer>
     </main>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="js/index.js"></script>
+    <script>
+        const d = document,
+            n = navigator,
+            w = window,
+            socket = io()
+        
+        let userCoords = {}
+
+        const showError = (msg)=>{
+            d.querySelector('.error-msg').innerHTML = msg
+            setTimeout(()=>{
+                d.querySelector('.error-msg').innerHTML = ""
+
+            }, 5000)
+        }
+
+        const goodMsg = (msg) =>{
+            d.querySelector('.good-msg').innerHTML = msg
+            setTimeout(()=>{
+                d.querySelector('.good-msg').innerHTML = ""
+            }, 5000)
+        }
+
+        const successPosition = (geo)=>{
+            userCoords = geo.coords
+        }
+        const failPosition = (code, msg)=>{
+            console.log(code, msg)
+            if(code === 1)showError("For use this app, you have to allow that we use your position.")
+        } 
+
+        socket.on("resUsers", (users)=>{
+            const $users = d.querySelector('.users')
+            console.log(users)
+            for(user in users){
+                let li = d.createElement('li')
+                li.classList.add('user')
+                li.textContent = `${user}`
+                $users.appendChild(li)
+                console.log(user)
+            }
+        })
+
+        n.geolocation.getCurrentPosition(successPosition, failPosition, 
+        {enableHighAccuracy: true})
+
+        const fetchNewUser = ()=>{
+            const data = new FormData(d.getElementById('form'))
+            data.append('latitude', userCoords.latitude)
+            data.append('longitude', userCoords.longitude)
+            data.append('accuracy', userCoords.accuracy)
+
+            fetch('/new', {
+                method: 'POST',
+                body: data
+            })
+            .then(response => response.json())
+            .then(res =>{
+                if(!res.err){
+                    goodMsg(res.msg)
+                    w.localStorage.setItem("distanceUserName", data.get("username"))
+                    d.querySelector('.registred').classList.remove('hidden')
+                    d.querySelector('.not-registred').classList.add('hidden')
+                    socket.emit('reqUsers')
+                }
+                else{
+                    showError(res.msg)
+                }
+            })
+            .catch(err => console.log(`Error in fetch: ${err}`))
+        }
+
+        d.addEventListener("submit", e=>{
+            if(e.target === d.getElementById('form')){
+                e.preventDefault()
+                if(userCoords.latitude){
+                    fetchNewUser()
+                }
+                else{
+                    showError("For use this app, you have to allow that we use your position.")
+                }
+            }
+        })
+
+        socket.on('resUser', (res)=>{
+            if(!res.err){
+                const $footer = d.querySelector('footer')
+                $footer.innerHTML = ""
+                let name = res.msg.split(':')[0]
+                goodMsg(res.msg)
+
+                let p1 = d.createElement('p')
+                let p2 = d.createElement('p')
+                let p3 = d.createElement('p')
+                p1.textContent = `${name}: is (Function does'nt exist already)M to you.`
+                p2.textContent = `latitude: ${res.data.latitude}`
+                p3.textContent = `longitude: ${res.data.longitude}`
+
+                $footer.appendChild(p1)
+                $footer.appendChild(p2)
+                $footer.appendChild(p3)
+            }
+            else{
+                showError(res.msg)
+            }
+            console.log(res)
+        })
+
+        d.addEventListener('click', e=>{
+            if(e.target.classList.contains('user')){
+
+                socket.emit('reqUser', e.target.textContent)
+            }
+        })
+
+    </script>
 </body>
 </html>
