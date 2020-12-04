@@ -116,11 +116,20 @@
         </header>
         <section>
             <div class="registred hidden">
+                <button id="close">Close</button>
+                <button id="call">Call</button>
                 <ul class="users">
                 </ul>
             </div>
             <div class="not-registred">
+                <h3>Signup</h3>
                 <form id="form">
+                    <label>Input a username</label>
+                    <input type="text" name="username" required>
+                    <button type="submit">Send</button>
+                </form>
+                <h3>Login</h3>
+                <form id="login">
                     <label>Input a username</label>
                     <input type="text" name="username" required>
                     <button type="submit">Send</button>
@@ -142,21 +151,27 @@
         
         let userCoords = {}
 
+    d.addEventListener("DOMContentLoaded", e=>{
+        if(w.localStorage.getItem("distanceUserName")){       
+            d.querySelector('.registred').classList.remove('hidden')
+            d.querySelector('.not-registred').classList.add('hidden')
+            socket.emit('reqUsers')
+        }
         const showError = (msg)=>{
             d.querySelector('.error-msg').innerHTML = msg
             setTimeout(()=>{
                 d.querySelector('.error-msg').innerHTML = ""
-
+    
             }, 5000)
         }
-
+    
         const goodMsg = (msg) =>{
             d.querySelector('.good-msg').innerHTML = msg
             setTimeout(()=>{
                 d.querySelector('.good-msg').innerHTML = ""
             }, 5000)
         }
-
+    
         const successPosition = (geo)=>{
             userCoords = geo.coords
         }
@@ -164,28 +179,53 @@
             console.log(code, msg)
             if(code === 1)showError("For use this app, you have to allow that we use your position.")
         } 
-
+    
         socket.on("resUsers", (users)=>{
             const $users = d.querySelector('.users')
+            $users.innerHTML = ""
             console.log(users)
-            for(user in users){
-                let li = d.createElement('li')
-                li.classList.add('user')
-                li.textContent = `${user}`
-                $users.appendChild(li)
-                console.log(user)
+            for(let user in users){
+                if(user != w.localStorage.getItem("distanceUserName")){
+                    let li = d.createElement('li')
+                    li.classList.add('user')
+                    li.textContent = `${user}`
+                    $users.appendChild(li)
+                    console.log(user)
+                }
             }
         })
-
+    
         n.geolocation.getCurrentPosition(successPosition, failPosition, 
         {enableHighAccuracy: true})
-
+    
+        const fetchLogin = ()=>{
+            const data = new FormData(d.getElementById('login'))
+            fetch('/login', {
+                method: 'POST',
+                body: data
+            })
+            .then(response => response.json())
+            .then(res =>{
+                if(!res.err){
+                    goodMsg(res.msg)
+                    w.localStorage.setItem("distanceUserName", data.get("username"))
+                    d.querySelector('.registred').classList.remove('hidden')
+                    d.querySelector('.not-registred').classList.add('hidden')
+                    socket.emit('reqUsers', data.get("username"))
+                }
+                else{
+                    showError(res.msg)
+                }
+            })
+            .catch(err => console.log(`Error in fetch: ${err}`))
+        }
+    
         const fetchNewUser = ()=>{
             const data = new FormData(d.getElementById('form'))
             data.append('latitude', userCoords.latitude)
             data.append('longitude', userCoords.longitude)
             data.append('accuracy', userCoords.accuracy)
-
+    
             fetch('/new', {
                 method: 'POST',
                 body: data
@@ -205,7 +245,7 @@
             })
             .catch(err => console.log(`Error in fetch: ${err}`))
         }
-
+    
         d.addEventListener("submit", e=>{
             if(e.target === d.getElementById('form')){
                 e.preventDefault()
@@ -216,22 +256,37 @@
                     showError("For use this app, you have to allow that we use your position.")
                 }
             }
+            if(e.target === d.getElementById("login")){
+                e.preventDefault()
+                if(userCoords.latitude){
+                    fetchLogin()
+                }
+                else{
+                    showError("For use this app, you have to allow that we use your position.")
+                }
+            }
         })
-
+    
         socket.on('resUser', (res)=>{
             if(!res.err){
                 const $footer = d.querySelector('footer')
                 $footer.innerHTML = ""
                 let name = res.msg.split(':')[0]
                 goodMsg(res.msg)
-
+    
                 let p1 = d.createElement('p')
                 let p2 = d.createElement('p')
                 let p3 = d.createElement('p')
-                p1.textContent = `${name}: is (Function does'nt exist already)M to you.`
+                if(res.distance<2){
+                    p1.textContent = `${name}: is ${parseInt(res.distance*1000)}M to you.`
+                }
+                else{
+                    p1.textContent = `${name}: is ${parseInt(res.distance)}KM to you.`
+                }
+                
                 p2.textContent = `latitude: ${res.data.latitude}`
                 p3.textContent = `longitude: ${res.data.longitude}`
-
+    
                 $footer.appendChild(p1)
                 $footer.appendChild(p2)
                 $footer.appendChild(p3)
@@ -242,12 +297,42 @@
             console.log(res)
         })
 
+        socket.on('givemeall', ()=>{
+            let data = {
+                name: w.localStorage.getItem("distanceUserName"),
+                latitude: userCoords.latitude,
+                longitude: userCoords.longitude,
+                accuracy: userCoords.accuracy
+            }
+            socket.emit("takeall", data)
+        })
+
+        socket.on('getcall', (data)=>{
+            console.log(data)
+            goodMsg(`${data.user.name} called you.`)
+        })
+
+        socket.on('errorcall', data=>{
+            showError(data.msg)
+        })
+    
         d.addEventListener('click', e=>{
             if(e.target.classList.contains('user')){
-
                 socket.emit('reqUser', e.target.textContent)
             }
+            if(e.target === d.getElementById("close")){
+                w.localStorage.removeItem("distanceUserName")
+                d.querySelector('.registred').classList.add('hidden')
+                d.querySelector('.not-registred').classList.remove('hidden')
+            }
+            if(e.target === d.getElementById("call")){
+                socket.emit("sendcall",{
+                    username: w.localStorage.getItem("distanceUserName")
+                })
+            }
         })
+    })
+
 
     </script>
 </body>

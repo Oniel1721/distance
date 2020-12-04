@@ -1,5 +1,6 @@
 const fs = require('fs')
 const path = require('path')
+const haversine = require('haversine')
 
 class DataBase{
     constructor(){
@@ -47,6 +48,27 @@ class DataBase{
             return cb(null, `${username}: founded.`,this.currentData.users[username])
         }
         return cb(true, `${username}: not found.`, null)
+    }
+
+    getAllUsersInRadio(owner, cb){
+        this.openDB()
+        let closeUsers = []
+        if(this.checkUserName(owner)){
+            for (let user in this.currentData.users){
+                if(user != owner){
+                    console.log(`Distance between ${owner} and ${user}`)
+                    let distance = haversine(this.currentData.users[owner],this.currentData.users[user]) 
+                    console.log(distance)
+                    if(distance <= 100) closeUsers.push({user, distance})
+                    console.log("---------------------------")
+                }
+            }
+            if(closeUsers.length){
+                return cb(null, `${closeUsers.length} users founded.`, closeUsers)
+            }
+            return cb(true, "There are'nt any user in a radio of 100 km.")
+        }
+        return cb(true, "this user name does'nt exist in database.")
     }
 }
 
